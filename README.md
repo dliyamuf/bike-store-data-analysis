@@ -17,7 +17,7 @@ The dataset used is [BikeStore](https://www.kaggle.com/datasets/dillonmyrick/bik
 ## **DATABASE SETUP**
 ### **SCHEMA DIAGRAM**
 I used snowflake schema to define relationship between tables. I split into two parts: sales and production.
-[gambar]
+[Schema Diagram](https://github.com/dliyamuf/bike-store-data-analysis/blob/main/fig/database-model.png)
 
 ### **CREATE DATABASE**
 ```sql
@@ -185,6 +185,206 @@ ORDER BY COUNT(o.store_id) DESC;
 ```
 Insight: Baldwin Bikes store sold most units among other stores.
 
+### **PRODUCTS AND STOCKS ANALYSIS**
+- **what's total revenue per product category?**
+```sql
+SELECT 
+c.category_name,
+SUM(i.total_price) AS total_revenue
+FROM production_product AS p
+JOIN production_categories AS c
+ON p.category_id = c.category_id
+JOIN sales_order_items AS i
+ON p.product_id = i.product_id
+GROUP BY c.category_name
+ORDER BY SUM(i.total_price) DESC;
+```
+Insight: The highest revenue was producing by Mountain Bike product category.
 
+- **What's most sold product per category?**
+```sql
+SELECT 
+c.category_name,
+SUM(i.quantity) AS total_unit
+FROM production_product AS p
+JOIN production_categories AS c
+ON p.category_id = c.category_id
+JOIN sales_order_items AS i
+ON p.product_id = i.product_id
+GROUP BY c.category_name
+ORDER BY SUM(i.quantity) DESC;
+```
+Insight: Most sold product category was earning by Cruisers Bicycles.
 
+- **What's most favorite brand name?**
+```sql
+SELECT
+b.brand_name,
+SUM(i.quantity) AS total_orders
+FROM production_product AS p 
+JOIN production_brands AS b
+ON p.brand_id = b.brand_id
+JOIN sales_order_items AS i
+ON p.product_id = i.product_id 
+GROUP BY b.brand_name
+ORDER BY SUM(i.quantity) DESC;
+```
+Insight: Most favorite brand's name that sold most units was Electra.
 
+- **How much is total stock each store?**
+```sql
+SELECT
+s.store_name,
+SUM(sto.quantity) AS total_stock
+FROM production_stores AS s
+JOIN production_stocks AS sto
+ON s.store_id = sto.store_id
+GROUP BY s.store_name
+ORDER BY SUM(sto.quantity) DESC;
+```
+Insight: Rowless Bike store has the highest product stocks.
+
+- **How much is total stocks per product?**
+```sql
+SELECT 
+p.product_name,
+SUM(sto.quantity) AS total_stocks
+FROM production_product AS p
+JOIN production_stocks AS sto
+ON p.product_id = sto.product_id
+GROUP BY p.product_name
+ORDER BY SUM(sto.quantity) DESC;
+```
+Insight: The product with highest total stock was Electra Towie Original 7D - 2017.
+
+### **CUSTOMER BEHAVIOUR ANALYSIS**
+- **Top 5 customer based on their spent**
+```sql
+-- create new column named customer_name
+ALTER TABLE sales_customers
+ADD customer_name VARCHAR(30);
+UPDATE sales_customers
+SET customer_name = CONCAT(first_name, ' ', last_name);
+
+ -- customers based on their spent
+SELECT
+cu.customer_name,
+SUM(i.total_price) AS total_revenue
+FROM sales_orders AS o
+JOIN sales_customers AS cu 
+ON o.customer_id = cu.customer_id
+JOIN sales_order_items AS i
+ON o.order_id = i.order_id
+GROUP BY cu.customer_name
+ORDER BY SUM(i.total_price) DESC
+LIMIT 5;
+
+-- alternative solution Q13 without creating new column
+WITH cust_name_data AS(
+SELECT 
+customer_id,
+first_name, 
+last_name,
+CONCAT(first_name, ' ', last_name) AS customer_name
+FROM
+sales_customers
+)
+SELECT
+cu.customer_name,
+SUM(i.total_price) AS total_revenue
+FROM sales_orders AS o
+JOIN cust_name_data AS cu 
+ON o.customer_id = cu.customer_id
+JOIN sales_order_items AS i
+ON o.order_id = i.order_id
+GROUP BY cu.customer_name
+ORDER BY SUM(i.total_price) DESC
+LIMIT 5;
+```
+Insight: Customer named Pamelia Newman spent highest on bike store.
+
+- **Top 5 customers based on their total orders**
+```sql
+SELECT
+cu.customer_name,
+SUM(i.quantity) AS total_orders
+FROM sales_orders AS o
+JOIN sales_customers AS cu 
+ON o.customer_id = cu.customer_id
+JOIN sales_order_items AS i
+ON o.order_id = i.order_id
+GROUP BY cu.customer_name
+ORDER BY SUM(i.quantity) DESC
+LIMIT 5;
+```
+Insight: Most orders came from customer named Tameka Fisher.
+
+### **STAFFS' PERFORMANCE ANALYSIS**
+- **Who's best staff based their revenue generated?**
+```sql
+WITH staff_name_data AS(
+SELECT
+staff_id,
+first_name,
+last_name,
+CONCAT(first_name, ' ', last_name) AS staff_name
+FROM 
+sales_staffs
+)
+SELECT 
+st.staff_name,
+s.store_name,
+SUM(i.total_price) AS total_revenue
+FROM sales_orders AS o 
+JOIN staff_name_data AS st
+ON o.staff_id = st.staff_id
+JOIN production_stores AS s
+ON o.store_id = s.store_id
+JOIN sales_order_items AS i
+ON o.order_id = i.order_id
+GROUP BY st.staff_name, s.store_name
+ORDER BY SUM(i.total_price) DESC;
+```
+
+### **OPERATIONAL ANALYSIS**
+- **how's order status of all orders?**
+Note: (1) means pending; (2) means processing; (3) means rejected; (4) means completed.
+```sql
+SELECT order_status, COUNT(*) AS total_days FROM sales_orders
+GROUP BY order_status
+ORDER BY COUNT(*) DESC;
+```
+Insight: Most of orders was completed.
+
+- **How much days is shipping late based on the store?**
+Note: Shipping late means the shipping date is greater that required date.
+```sql
+WITH difference_date_data AS(
+SELECT
+order_id,
+store_id,
+required_date,
+shipped_date,
+(shipped_date - required_date) AS difference_date
+FROM 
+sales_orders
+WHERE
+(shipped_date-required_date) >0
+)
+SELECT 
+s.store_name,
+SUM(o.difference_date) AS total_day_late
+FROM difference_date_data AS o
+JOIN production_stores AS s
+ON o.store_id = s.store_id
+GROUP BY s.store_name
+ORDER BY SUM(o.difference_date) DESC;
+```
+Insight: Baldwin Bikes has highest total shipped day late.
+
+## **CONCLUSION**
+
+## **RECOMMENDATION ACTIONS**
+- Increase productivity and operational by giving more estimated required date.
+- Increasing staffs' performance by delivering bonuses if they achieving more than the target goals.
+- Add membership program and collaborate with brand to increasing sales and loyal customers.
