@@ -2,6 +2,7 @@
 ## **PROJECT OVERVIEW**
 With many sports and healthy communities, the demand for sports facilities is also increasing. One of the favorite sports is bicycling. Analysing the bike store is able to deliver information about sales, customers' behaviour, products and stocks, stores and staff performance, and operational.
 
+[Bike store Sales Dashboard](https://lookerstudio.google.com/reporting/d0b9f824-0f9e-4118-adf0-09c514a458a0)
 ## **DATASET**
 The dataset used is [BikeStore](https://www.kaggle.com/datasets/dillonmyrick/bike-store-sample-database) from Kaggle which comprise of 9 csv files:
 - brands: information about product's brand, including brand_id and brand_name.
