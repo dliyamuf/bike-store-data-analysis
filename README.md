@@ -382,8 +382,6 @@ ORDER BY SUM(o.difference_date) DESC;
 ```
 Insight: Baldwin Bikes has highest total shipped day late.
 
-## **CONCLUSION**
-
 ## **RECOMMENDATION ACTIONS**
 - Increase productivity and operational by giving more estimated required date.
 - Increase staffs' performance by delivering bonuses if they achieving more than the target goals.
